@@ -19,7 +19,6 @@ terraform {
 
 provider "openstack" {
   cloud = "openstack"
-  # Auth via OS_CLOUD + clouds.yaml (or OS_* env vars)
 }
 
 ############################
@@ -27,11 +26,19 @@ provider "openstack" {
 ############################
 
 locals {
-  app_name           = "jupyter-notebook"
-  flavor             = "gp1.small"
-  key_pair           = "" # empty = password auth only
-  enable_floating_ip = true
-  metadata           = {}
+  app_name = "jupyter-notebook"
+  flavor   = "gp1.small"
+  key_pair = "" # empty = password auth only
+
+  # Addresses are publicly routed, so the fixed address is reachable
+  # on its own - and a floating IP cannot be attached there at all.
+  enable_floating_ip = false
+
+  # Who may reach the notebook on 8000. Campus and VPN only: the token travels
+  # over plain HTTP.
+  web_source_cidr = "141.72.0.0/16"
+
+  metadata = {}
 }
 
 ############################
@@ -63,9 +70,9 @@ locals {
 
 # Generate passwords for each user
 resource "random_password" "user_passwords" {
-  count   = length(local.all_users)
-  length  = 16
-  special = true
+  count       = length(local.all_users)
+  length      = 16
+  special     = true
   min_upper   = 1
   min_lower   = 1
   min_numeric = 1
@@ -109,7 +116,11 @@ resource "openstack_compute_instance_v2" "shared_vm" {
   flavor_name = local.flavor
   key_pair    = local.key_pair != "" ? local.key_pair : null
 
-  security_groups = [var.shared_secgroup_id]
+  # This argument takes group *names*, not IDs - see security_group.tf.
+  security_groups = [
+    var.shared_secgroup_id,
+    openstack_networking_secgroup_v2.notebook.name,
+  ]
 
   timeouts {
     create = "15m"
