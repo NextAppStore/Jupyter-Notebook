@@ -85,6 +85,7 @@ locals {
     for uid, user in local.users_map : uid => {
       type     = "password"
       ip       = local.enable_floating_ip ? openstack_networking_floatingip_v2.fip[0].address : openstack_compute_instance_v2.shared_vm.network[0].fixed_ip_v4
+      ip_v6    = openstack_compute_instance_v2.shared_vm.network[0].fixed_ip_v6
       port     = 8000
       username = user.username
       auth     = random_password.user_passwords[local.user_indices[uid]].result
