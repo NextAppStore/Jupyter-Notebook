@@ -16,7 +16,7 @@ locals {
 
   # App-specific build configuration
   provision_script        = "scripts/provision.sh"
-  source_image_name       = "Ubuntu 22.04"
+  source_image_name       = "Ubuntu 24.04"
   flavor                  = "gp1.small"
   ssh_username            = "ubuntu"
   ssh_timeout             = "20m"
@@ -39,6 +39,10 @@ source "openstack" "image" {
 
   use_floating_ip = local.use_floating_ip
 
+  # Packer builds run from the worker, which itself sits inside OpenStack
+  # rather than connecting over the DHBW VPN - the v4 10.200.x.x network
+  # is directly reachable from there. Explicit v4 because DHBWV6 is
+  # dual-stack and Packer would otherwise pick a family at random.
   ssh_ip_version = "4"
   ssh_timeout    = local.ssh_timeout
   ssh_username   = local.ssh_username

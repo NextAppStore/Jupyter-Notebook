@@ -32,6 +32,19 @@ resource "openstack_networking_secgroup_rule_v2" "notebook" {
   description       = "JupyterHub web UI (campus/VPN only)"
 }
 
-# No IPv6 rule: the App is deployed onto DHBWv4, so the instance has no IPv6
-# address. Security-group rules are per-ethertype, so a dual-stack network
-# would need a second rule here.
+# IPv6 counterpart: network_uuid now defaults to DHBWV6 (dual-stack), so the
+# instance gets a v6 address too — without this second rule, the DHBW VPN's
+# IPv6-only route to OpenStack instances (see Ubuntu-App/packer's
+# ssh_ip_version comment) would have no way to reach port 8000 at all.
+# Security-group rules are per-ethertype, so IPv4 and IPv6 each need their
+# own rule even on the same dual-stack network.
+resource "openstack_networking_secgroup_rule_v2" "notebook_v6" {
+  security_group_id = openstack_networking_secgroup_v2.notebook.id
+  direction         = "ingress"
+  ethertype         = "IPv6"
+  protocol          = "tcp"
+  port_range_min    = 8000
+  port_range_max    = 8000
+  remote_ip_prefix  = "::/0"
+  description       = "JupyterHub web UI (IPv6)"
+}
